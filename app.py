@@ -8,6 +8,7 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
+import threading
 import json
 from datetime import datetime
 from dotenv import load_dotenv
@@ -85,36 +86,25 @@ mail = Mail(app)
 # ============ NOTIFICATION FUNCTIONS (SMS & EMAIL) ============
 
 def send_email_notification(to_email, subject, body):
-    try:
-        print("📨 send_email_notification() CALLED")
-        print(
-            f"MAIL CONFIG → "
-            f"username={app.config.get('MAIL_USERNAME')}, "
-            f"password_set={'YES' if app.config.get('MAIL_PASSWORD') else 'NO'}, "
-            f"server={app.config.get('MAIL_SERVER')}, "
-            f"port={app.config.get('MAIL_PORT')}"
-        )
+    def _send():
+        try:
+            msg = Message(
+                subject=subject,
+                sender=app.config['MAIL_USERNAME'],
+                recipients=[to_email]
+            )
+            msg.body = body
+            mail.send(msg)
+            print(f"📧 Email sent to {to_email}")
+        except Exception as e:
+            print(f"❌ Email failed to {to_email}: {e}")
+            import traceback
+            traceback.print_exc()
 
-        if not app.config['MAIL_USERNAME'] or not app.config['MAIL_PASSWORD']:
-            print("⚠️ Email credentials not configured - Email skipped")
-            return False
+    print("📨 send_email_notification() CALLED (async)")
+    threading.Thread(target=_send).start()
+    return True
 
-        msg = Message(
-            subject=subject,
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[to_email]
-        )
-        msg.body = body
-
-        mail.send(msg)
-        print(f"📧 Email sent to {to_email}")
-        return True
-
-    except Exception as e:
-        print(f"❌ Email failed to {to_email}: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
 
 
 def send_sms_notification(phone_number, message):

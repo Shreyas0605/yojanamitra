@@ -3,7 +3,7 @@ YojanaMitra Flask Backend
 Production-ready backend with Gemini AI integration
 """
 
-from flask import Flask, request, jsonify, session, send_from_directory
+from flask import Flask, request, jsonify, session, send_from_directory, redirect, url_for
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -747,6 +747,16 @@ def index():
 @app.route('/all-schemes')
 def all_schemes():
     return send_from_directory('static', 'all_schemes.html')
+
+@app.route('/dashboard')
+def dashboard():
+    # Redirect to home where the dashboard logic resides
+    return redirect(url_for('index'))
+
+@app.route('/unsubscribe')
+def unsubscribe():
+    # Placeholder for unsubscribe logic
+    return "Unsubscribed successfully. You will no longer receive emails.", 200
 
 @app.route('/<path:filename>')
 def serve_static(filename):

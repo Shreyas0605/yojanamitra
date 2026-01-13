@@ -10,7 +10,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import threading
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 import google.generativeai as genai
 from google.oauth2 import id_token
@@ -74,7 +74,7 @@ if os.getenv('RENDER') or os.getenv('FLASK_ENV') == 'production':
 
 # ----------------- SendGrid Setup -----------------
 import sendgrid
-from sendgrid.helpers.mail import Mail, Email, To, Content
+from sendgrid.helpers.mail import Mail, Email, To, Content, Header
 
 SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY')
 FROM_EMAIL = os.getenv('FROM_EMAIL', '06052004shreyas2@gmail.com') # Verified in SendGrid
@@ -143,7 +143,7 @@ def send_email_notification(to_email, subject, body, html_content=None, user_nam
             mail_obj = Mail(from_email, to_email_obj, subject, content)
             
             # Add Unsubscribe Header for Gmail/Yahoo reputation
-            mail_obj.add_header({"List-Unsubscribe": f"<mailto:unsubscribe@yojanamitra.in?subject=unsubscribe>, <https://yojan-mitra.onrender.com/unsubscribe?email={to_email}>"})
+            mail_obj.add_header(Header("List-Unsubscribe", f"<mailto:unsubscribe@yojanamitra.in?subject=unsubscribe>, <https://yojan-mitra.onrender.com/unsubscribe?email={to_email}>"))
             
             response = sg.client.mail.send.post(request_body=mail_obj.get())
             
@@ -1813,7 +1813,7 @@ def approve_pending_scheme(scheme_id):
         # Update pending scheme status
         pending.status = 'approved'
         pending.approved_by = session.get('admin_id')
-        pending.approved_at = datetime.utcnow()
+        pending.approved_at = datetime.now(timezone.utc)
         
         # Clear related notifications
         AdminNotification.query.filter_by(pending_scheme_id=scheme_id).delete()
@@ -1844,7 +1844,7 @@ def reject_pending_scheme(scheme_id):
     pending.status = 'rejected'
     pending.rejection_reason = data.get('reason', 'No reason provided')
     pending.approved_by = session.get('admin_id')
-    pending.approved_at = datetime.utcnow()
+    pending.approved_at = datetime.now(timezone.utc)
     
     # Clear notifications
     AdminNotification.query.filter_by(pending_scheme_id=scheme_id).delete()
@@ -1913,7 +1913,7 @@ def batch_approve_pending_schemes():
             # Update pending status
             pending.status = 'approved'
             pending.approved_by = session.get('admin_id')
-            pending.approved_at = datetime.utcnow()
+            pending.approved_at = datetime.now(timezone.utc)
             
             AdminNotification.query.filter_by(pending_scheme_id=s_id).delete()
             db.session.add(approved_scheme)
@@ -1946,7 +1946,7 @@ def batch_reject_pending_schemes():
             pending.status = 'rejected'
             pending.rejection_reason = reason
             pending.approved_by = session.get('admin_id')
-            pending.approved_at = datetime.utcnow()
+            pending.approved_at = datetime.now(timezone.utc)
             
             AdminNotification.query.filter_by(pending_scheme_id=s_id).delete()
             rejected_count += 1

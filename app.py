@@ -57,7 +57,7 @@ GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 print(f"GEMINI_API_KEY loaded: {GEMINI_API_KEY}")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-flash-latest')
     print("Gemini model initialized.")
 
 # ----------------- Production Config (ProxyFix) -----------------
@@ -203,104 +203,87 @@ def send_sms_notification(phone_number, message):
 
 def notify_users_of_new_schemes(new_schemes_list):
     """
-    Send personalized SMS and Email to all registered users about specific new schemes.
-    new_schemes_list: List of Scheme objects
+    Send summarized and targeted notifications.
+    Only individual eligible schemes are listed to prevent overwhelming the user.
     """
     try:
         if not new_schemes_list:
             return
 
         users = User.query.all()
-        scheme_names = ", ".join([s.name for s in new_schemes_list])
+        total_new = len(new_schemes_list)
+        base_url = "https://yojan-mitra.onrender.com"
 
-        print(
-            f"📢 Starting personalized broadcast for "
-            f"{len(new_schemes_list)} schemes to {len(users)} users..."
-        )
+        print(f"📢 Starting targeted broadcast for {total_new} schemes to {len(users)} users...")
 
         for user in users:
-            # 🔍 DEBUG (this is what we added)
-            print(
-                f"DEBUG USER → id={user.id}, name={user.name}, "
-                f"email={user.email}, mobile={user.mobile}"
-            )
-
             # --- Check 1: Profile Completeness ---
             if user.age is None:
-                msg_body = (
-                    f"Hi {user.name}, {len(new_schemes_list)} new schemes "
-                    f"have been added to YojanaMitra! Please complete your "
-                    f"profile to see if you are eligible."
+                html_msg = f"""
+                <p>Great news! <b>{total_new}</b> new government schemes have been added to YojanaMitra today.</p>
+                <p>We found several opportunities that might interest you, but we need more details to confirm your eligibility.</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{base_url}/dashboard" class="btn">Complete My Profile</a>
+                </div>
+                """
+                send_email_notification(
+                    user.email,
+                    f"{total_new} New Schemes Added - Action Required 🔔",
+                    f"Hi {user.name}, {total_new} new schemes were added. Complete your profile to check eligibility!",
+                    html_content=get_email_html_template("Profile Update Needed", html_msg, user.name),
+                    user_name=user.name
                 )
+                continue
 
-                # TEMP: disable SMS for testing
-# if user.mobile:
-#     send_sms_notification(user.mobile, msg_body)
-
-
-                if user.email:
-                    html_msg = f"""
-                    <p>Great news! <b>{len(new_schemes_list)}</b> new government schemes have been added to YojanaMitra.</p>
-                    <p>Please complete your profile so we can check if you are eligible for these new opportunities.</p>
-                    <a href="https://yojan-mitra.onrender.com/dashboard" class="btn">Complete My Profile</a>
-                    """
-                    send_email_notification(
-                        user.email,
-                        "New Schemes Alert - YojanaMitra",
-                        msg_body,
-                        html_content=get_email_html_template("New Schemes Added", html_msg, user.name),
-                        user_name=user.name
-                    )
-                else:
-                    print(f"⚠️ Email skipped: User {user.id} has no email")
-
-                continue  # move to next user
-
-            # --- Check 2: Eligibility Match ---
+            # --- Check 2: Targeted Eligibility ---
             eligible_schemes = []
             for scheme in new_schemes_list:
                 try:
                     score = calculate_match_score(user, scheme)
                     if score > 0:
-                        eligible_schemes.append(scheme.name)
+                        eligible_schemes.append(scheme)
                 except Exception as e:
-                    print(
-                        f"❌ Error matching user {user.id} "
-                        f"with scheme {scheme.id}: {e}"
-                    )
+                    print(f"❌ Error matching user {user.id} with scheme {scheme.id}: {e}")
 
             # --- Message construction ---
             if eligible_schemes:
-                # Format schemes as a bulleted list for HTML
-                schemes_html_list = "".join([f'<li class="scheme-item">{s}</li>' for s in eligible_schemes])
+                count = len(eligible_schemes)
+                # List only up to 5 specific matches to keep email clean, then "and more"
+                display_schemes = eligible_schemes[:5]
+                schemes_html_list = "".join([f'<li class="scheme-item"><a href="{base_url}/all_schemes.html" style="color: #1e3c72; text-decoration: none;">{s.name}</a></li>' for s in display_schemes])
                 
+                if count > 5:
+                    schemes_html_list += f'<li class="scheme-item">...and {count - 5} more matching your profile!</li>'
+
                 html_msg = f"""
-                <p>Good news! You are eligible for <b>{len(eligible_schemes)}</b> new schemes:</p>
+                <p>Excellent news, <b>{user.name}</b>!</p>
+                <p>We've just added <b>{total_new}</b> new schemes, and based on your profile, you are eligible for <b>{count}</b> of them:</p>
                 <ul class="scheme-list">
                     {schemes_html_list}
                 </ul>
-                <p>Apply now to secure your benefits!</p>
-                <a href="https://yojan-mitra.onrender.com/dashboard" class="btn">View & Apply Now</a>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{base_url}/dashboard" class="btn">View My Recommendations</a>
+                </div>
+                <p style="font-size: 14px; color: #666;">These schemes match your age, location, and other profile details.</p>
                 """
                 
-                msg_body = f"Hi {user.name}, you're eligible for {len(eligible_schemes)} new schemes! Check them on YojanaMitra."
-                email_subject = f"You are eligible for {len(eligible_schemes)} new schemes 🎉"
-                email_html = get_email_html_template("Eligibility Match!", html_msg, user.name)
+                msg_body = f"Hi {user.name}, you're eligible for {count} of the {total_new} new schemes added today! Check them on YojanaMitra."
+                email_subject = f"Match Found! You're eligible for {count} new schemes 🎉"
+                email_html = get_email_html_template("New Targeted Opportunities", html_msg, user.name)
             else:
+                # No matches found for this user
                 html_msg = f"""
-                <p><b>{len(new_schemes_list)}</b> new schemes have been added to our platform:</p>
-                <p><i>{scheme_names}</i></p>
-                <p>Check them out to see more details.</p>
-                <a href="https://yojan-mitra.onrender.com/all-schemes" class="btn">Browse All Schemes</a>
+                <p><b>{total_new}</b> new schemes were added to our platform today.</p>
+                <p>While none directly match your profile criteria yet, you can browse the full list to see if any catch your eye.</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{base_url}/all-schemes" class="btn">Browse All Schemes</a>
+                </div>
                 """
-                msg_body = f"Hi {user.name}, {len(new_schemes_list)} new schemes added. Check them on YojanaMitra."
-                email_subject = "New Schemes Added - YojanaMitra"
-                email_html = get_email_html_template("New Schemes Added", html_msg, user.name)
+                msg_body = f"Hi {user.name}, {total_new} new schemes added to YojanaMitra. Check them out today."
+                email_subject = "New Schemes Update - YojanaMitra"
+                email_html = get_email_html_template("Update: New Schemes Added", html_msg, user.name)
 
             # --- Dispatch ---
-            if user.mobile:
-                send_sms_notification(user.mobile, msg_body)
-
             if user.email:
                 send_email_notification(
                     user.email, 
@@ -309,10 +292,8 @@ def notify_users_of_new_schemes(new_schemes_list):
                     html_content=email_html,
                     user_name=user.name
                 )
-            else:
-                print(f"⚠️ Email skipped: User {user.id} has no email")
 
-        print("✅ Personalized broadcast completed.")
+        print("✅ Refined targeted broadcast completed.")
 
     except Exception as e:
         print(f"❌ Error in notification broadcast: {e}")
@@ -575,6 +556,38 @@ class SchemeSource(db.Model):
             'isActive': self.is_active,
             'lastScraped': self.last_scraped.isoformat() if self.last_scraped else None,
             'createdAt': self.created_at.isoformat()
+        }
+
+class SchemeTranslation(db.Model):
+    """Cache for AI-translated scheme details using flexible JSON storage"""
+    id = db.Column(db.Integer, primary_key=True)
+    scheme_id = db.Column(db.Integer, db.ForeignKey('scheme.id'), nullable=False)
+    language = db.Column(db.String(10), nullable=False) # e.g., 'kn'
+    
+    # Store complete translation payload as JSON string
+    content_json = db.Column(db.Text, nullable=False)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (db.UniqueConstraint('scheme_id', 'language', name='_scheme_lang_uc'),)
+
+    def to_dict(self):
+        try:
+            data = json.loads(self.content_json)
+        except:
+            data = {}
+            
+        return {
+            'id': self.id,
+            'schemeId': self.scheme_id,
+            'language': self.language,
+            'name': data.get('name', ''),
+            'description': data.get('description', ''),
+            'benefits': data.get('benefits', ''),
+            'eligibility': data.get('eligibility', ''),
+            'exclusions': data.get('exclusions', ''),
+            'applicationProcess': data.get('application_process', ''),
+            'documentsRequired': data.get('documents_required', '')
         }
 
 class PendingScheme(db.Model):
@@ -1076,6 +1089,78 @@ def get_schemes():
 def get_scheme(scheme_id):
     scheme = Scheme.query.get_or_404(scheme_id)
     return jsonify({'scheme': scheme.to_dict()}), 200
+
+@app.route('/api/schemes/<int:scheme_id>/translate', methods=['POST'])
+def translate_scheme(scheme_id):
+    """
+    On-demand translation with DB caching.
+    Protects Gemini quota by ensuring each scheme is only translated once.
+    """
+    target_lang = request.json.get('language', 'kn')
+    if target_lang != 'kn':
+        return jsonify({'error': 'Only Kannada translation is supported currently'}), 400
+        
+    # 1. Check Cache
+    cached = SchemeTranslation.query.filter_by(scheme_id=scheme_id, language=target_lang).first()
+    if cached:
+        return jsonify({'translation': cached.to_dict(), 'cached': True}), 200
+        
+    # 2. Translate using Gemini
+    scheme = Scheme.query.get_or_404(scheme_id)
+    
+    if not GEMINI_API_KEY:
+        return jsonify({'error': 'AI Translation service not configured'}), 503
+        
+    try:
+        # Construct prompt for structured translation
+        prompt = f"""
+        Translate the following government scheme details into fluent, professional Kannada.
+        Keep the output as a JSON object with these exact keys: 
+        name, description, benefits, eligibility, exclusions, application_process, documents_required.
+        
+        SCHEME DATA:
+        Name: {scheme.name}
+        Description: {scheme.description}
+        Benefits: {scheme.benefits}
+        Eligibility: {scheme.eligibility}
+        Exclusions: {scheme.exclusions}
+        Application Process: {scheme.application_process}
+        Documents Required: {scheme.documents_required}
+        
+        JSON OUTPUT (Kannada):
+        """
+        
+        response = model.generate_content(prompt)
+        # Handle potential response formatting issues
+        text = response.text.replace('```json', '').replace('```', '').strip()
+        translated_data = json.loads(text)
+        print(f"DEBUG: Translate JSON parsed successfully. Keys: {list(translated_data.keys())}")
+        
+        # 3. Save to Cache (Dump entire JSON)
+        translation = SchemeTranslation(
+            scheme_id=scheme.id,
+            language=target_lang,
+            content_json=json.dumps(translated_data)
+        )
+        db.session.add(translation)
+        db.session.commit()
+        
+        return jsonify({'translation': translation.to_dict(), 'cached': False}), 200
+        
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ AI Translation Error for Scheme {scheme_id}: {error_msg}")
+        
+        if "429" in error_msg or "ResourceExhausted" in error_msg:
+            return jsonify({
+                'error': 'AI Quota temporarily exhausted. Please try again in a few minutes.',
+                'retry_after': 60
+            }), 429
+        elif "403" in error_msg or "PermissionDenied" in error_msg:
+             return jsonify({'error': 'AI Service permission denied (API key issue).'}), 403
+             
+        traceback.print_exc()
+        return jsonify({'error': f'Translation failed: {error_msg}'}), 500
 
 @app.route('/api/schemes', methods=['POST'])
 def create_scheme():
@@ -2243,49 +2328,70 @@ def seed_schemes():
 
 @app.route('/api/test-notifications', methods=['GET'])
 def test_notifications():
-    """Diagnostic endpoint to test Email and SMS"""
+    """Trigger a simulated broadcast to test summarized/targeted notifications"""
     email = request.args.get('email')
-    phone = request.args.get('phone')
     
-    results = {}
-    
-    if email:
-        test_html = f"""
-        <p>Congratulations! Your email notification system is now using <b>Professional HTML Formatting</b>.</p>
-        <p>This update includes:</p>
-        <ul class="scheme-list">
-            <li class="scheme-item">Responsive branded templates</li>
-            <li class="scheme-item">Better readability with lists and bold text</li>
-            <li class="scheme-item">Anti-spam headers (List-Unsubscribe)</li>
-            <li class="scheme-item">Improved sender reputation</li>
-        </ul>
-        <p>If you can see this list and the blue button below, everything is working perfectly!</p>
-        <a href="https://yojan-mitra.onrender.com" class="btn">Return to Portal</a>
-        """
-        results['email'] = send_email_notification(
-            email, 
-            "YojanaMitra - HTML Email System Check", 
-            "Your email system is now upgraded to HTML formatting!",
-            html_content=get_email_html_template("System Upgrade Successful", test_html, "User")
-        )
-    
-    if phone:
-        results['sms'] = send_sms_notification(
-            phone,
-            "YojanaMitra Test: SMS system check. If received, Twilio is connected correctly."
-        )
+    if not email:
+        return jsonify({"error": "Please provide 'email' query parameter to target the test"}), 400
         
-    if not email and not phone:
-        return jsonify({"error": "Please provide 'email' or 'phone' query parameter"}), 400
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({"error": f"User with email {email} not found in database"}), 404
         
+    # Simulate a batch of 10 new schemes
+    print(f"--- Simulating targeted broadcast for {user.name} ---")
+    
+    # Get some schemes to use as "new" schemes for testing
+    all_schemes = Scheme.query.limit(10).all()
+    
+    total_new = len(all_schemes)
+    base_url = "https://yojan-mitra.onrender.com"
+    
+    # Targeted Eligibility Check
+    eligible_schemes = []
+    for scheme in all_schemes:
+        try:
+            if calculate_match_score(user, scheme) > 0:
+                eligible_schemes.append(scheme)
+        except:
+            pass
+            
+    count = len(eligible_schemes)
+    display_schemes = eligible_schemes[:5]
+    schemes_html_list = "".join([f'<li class="scheme-item"><a href="{base_url}/all_schemes.html" style="color: #1e3c72; text-decoration: none;">{s.name}</a></li>' for s in display_schemes])
+    if count > 5:
+        schemes_html_list += f'<li class="scheme-item">...and {count - 5} more matching your profile!</li>'
+
+    html_msg = f"""
+    <p><b>[TEST]</b> Excellent news, <b>{user.name}</b>!</p>
+    <p>We've just added <b>{total_new}</b> new schemes, and based on your profile, you are eligible for <b>{count}</b> of them:</p>
+    <ul class="scheme-list">
+        {schemes_html_list}
+    </ul>
+    <div style="text-align: center; margin: 30px 0;">
+        <a href="{base_url}/dashboard" class="btn">View My Recommendations</a>
+    </div>
+    <p style="font-size: 14px; color: #666;">This is a test of our new targeted notification system.</p>
+    """
+    
+    email_subject = f"[TEST] You're eligible for {count} new schemes"
+    email_html = get_email_html_template("New Targeted Opportunities", html_msg, user.name)
+    
+    success = send_email_notification(
+        user.email, 
+        email_subject, 
+        f"Test: You are eligible for {count} schemes.", 
+        html_content=email_html,
+        user_name=user.name
+    )
+    
     return jsonify({
-        "message": "Notification tests triggered",
-        "results": results,
-        "config_check": {
-            "sendgrid_key_present": bool(SENDGRID_API_KEY),
-            "from_email": FROM_EMAIL,
-            "twilio_sid_present": bool(os.getenv('TWILIO_ACCOUNT_SID'))
-        }
+        "message": "Targeted notification test triggered",
+        "user": user.name,
+        "email": user.email,
+        "eligible_count": count,
+        "total_simulated": total_new,
+        "success": success
     }), 200
 
 if __name__ == '__main__':

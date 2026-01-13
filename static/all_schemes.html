@@ -182,12 +182,12 @@
         // Helper to format text as list items
         function formatDetailList(text, targetId) {
             const container = document.getElementById(targetId);
-            if (!text || text.toLowerCase() === 'none' || text === 'null') {
+            if (!text || String(text).toLowerCase() === 'none' || String(text).toLowerCase() === 'null') {
                 container.innerHTML = '<li>Details to be checked on official portal.</li>';
                 return false;
             }
 
-            let cleaned = text.trim();
+            let cleaned = String(text).trim();
             const lines = [];
             const rawLines = cleaned.split(/\n/);
             let currentLine = "";
@@ -232,8 +232,41 @@
                 const res = await fetch(`/api/schemes/${schemeId}`);
                 if (!res.ok) throw new Error('API Error');
                 const data = await res.json();
-                const scheme = data.scheme;
-                const criteria = scheme.criteria || {};
+                let scheme = data.scheme;
+                let criteria = scheme.criteria || {};
+
+                // --- AI Translation Logic ---
+                const currentLang = localStorage.getItem('site_lang') || 'en';
+                if (currentLang === 'kn') {
+                    const statusText = document.querySelector('#modal-loader p');
+                    const originalStatus = statusText.textContent;
+                    statusText.textContent = "Translating content using AI... ✨";
+
+                    try {
+                        const tRes = await fetch(`/api/schemes/${schemeId}/translate`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ language: 'kn' })
+                        });
+
+                        if (tRes.ok) {
+                            const tData = await tRes.json();
+                            const trans = tData.translation;
+                            // Overwrite display data with translations
+                            scheme.name = trans.name;
+                            scheme.description = trans.description;
+                            scheme.benefits = trans.benefits;
+                            scheme.eligibility = trans.eligibility;
+                            criteria.exclusions = trans.exclusions;
+                            criteria.applicationProcess = trans.applicationProcess;
+                            criteria.documentsRequired = trans.documentsRequired;
+                        }
+                    } catch (te) {
+                        console.warn('AI Translation failed, showing English:', te);
+                    } finally {
+                        statusText.textContent = originalStatus;
+                    }
+                }
 
                 // Basic Info
                 document.getElementById('modal-category').textContent = scheme.category || 'General';
@@ -259,13 +292,14 @@
                 loader.style.display = 'none';
                 content.style.display = 'block';
 
-                // Re-apply translations to modal content
+                // Re-apply translations to labels
                 if (typeof updateLanguage === 'function') {
                     updateLanguage();
                 }
             } catch (e) {
                 console.error(e);
-                alert('Scheme details temporarily unavailable.');
+                console.error("Scheme Details Error:", e);
+                alert(`Error loading details: ${e.message}`);
                 bsModal.hide();
             }
         }

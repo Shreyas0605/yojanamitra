@@ -1016,13 +1016,14 @@ def get_schemes():
     
     # Pagination Params
     page = int(request.args.get('page', 1))
-    limit = int(request.args.get('limit', 100))
+    limit = int(request.args.get('limit', 1000))
     
     # Handle empty strings as 'All' (Robustness fix)
     if not category: category = 'All'
     if not state: state = 'All'
     
-    schemes_query = Scheme.query
+    # Sort by ID Descending (Newest First)
+    schemes_query = Scheme.query.order_by(Scheme.id.desc())
     
     if category != 'All':
         schemes_query = schemes_query.filter(Scheme.category == category)

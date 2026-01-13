@@ -81,7 +81,47 @@ FROM_EMAIL = os.getenv('FROM_EMAIL', '06052004shreyas2@gmail.com') # Verified in
 
 # ============ NOTIFICATION FUNCTIONS (SMS & EMAIL) ============
 
-def send_email_notification(to_email, subject, body):
+def get_email_html_template(title, content_html, user_name="User"):
+    """Returns a professional, responsive HTML template for emails"""
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }}
+            .container {{ max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }}
+            .header {{ background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 25px; text-align: center; }}
+            .content {{ padding: 30px; background-color: #ffffff; }}
+            .footer {{ background-color: #f9f9f9; padding: 20px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #eeeeee; }}
+            .btn {{ display: inline-block; padding: 12px 25px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }}
+            .scheme-list {{ margin: 20px 0; padding-left: 20px; }}
+            .scheme-item {{ margin-bottom: 10px; font-weight: bold; color: #2c3e50; }}
+            h2 {{ color: #1e3c72; margin-top: 0; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1 style="margin:0;">YojanaMitra</h1>
+                <p style="margin:5px 0 0 0; opacity: 0.8;">Your Guide to Government Schemes</p>
+            </div>
+            <div class="content">
+                <h2>{title}</h2>
+                <p>Hi {user_name},</p>
+                {content_html}
+                <p>Best regards,<br>The YojanaMitra Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; 2026 YojanaMitra. All rights reserved.</p>
+                <p>You received this because you are a registered user of YojanaMitra.</p>
+                <p><a href="https://yojan-mitra.onrender.com/dashboard" style="color: #007bff;">Manage Notifications</a> | <a href="#" style="color: #888;">Unsubscribe</a></p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+def send_email_notification(to_email, subject, body, html_content=None, user_name="User"):
     """Send Email using SendGrid HTTP API asynchronously (Better for Render)"""
     def _send():
         try:
@@ -92,13 +132,23 @@ def send_email_notification(to_email, subject, body):
             sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
             from_email = Email(FROM_EMAIL)
             to_email_obj = To(to_email)
-            content = Content("text/plain", body)
+            
+            # If html_content is provided, use it. Otherwise, wrap body in template.
+            if not html_content:
+                final_html = get_email_html_template(subject, f"<p>{body}</p>", user_name)
+            else:
+                final_html = html_content
+                
+            content = Content("text/html", final_html)
             mail_obj = Mail(from_email, to_email_obj, subject, content)
+            
+            # Add Unsubscribe Header for Gmail/Yahoo reputation
+            mail_obj.add_header({"List-Unsubscribe": f"<mailto:unsubscribe@yojanamitra.in?subject=unsubscribe>, <https://yojan-mitra.onrender.com/unsubscribe?email={to_email}>"})
             
             response = sg.client.mail.send.post(request_body=mail_obj.get())
             
             if response.status_code >= 200 and response.status_code < 300:
-                print(f"📧 Email sent to {to_email} via SendGrid")
+                print(f"📧 HTML Email sent to {to_email} via SendGrid")
             else:
                 print(f"❌ SendGrid failed with status {response.status_code}: {response.body}")
                 
@@ -107,7 +157,7 @@ def send_email_notification(to_email, subject, body):
             import traceback
             traceback.print_exc()
 
-    print(f"📨 send_email_notification() CALLED for {to_email} (async via SendGrid)")
+    print(f"📨 send_email_notification() CALLED for {to_email} (async HTML via SendGrid)")
     threading.Thread(target=_send).start()
     return True
 
@@ -183,10 +233,17 @@ def notify_users_of_new_schemes(new_schemes_list):
 
 
                 if user.email:
+                    html_msg = f"""
+                    <p>Great news! <b>{len(new_schemes_list)}</b> new government schemes have been added to YojanaMitra.</p>
+                    <p>Please complete your profile so we can check if you are eligible for these new opportunities.</p>
+                    <a href="https://yojan-mitra.onrender.com/dashboard" class="btn">Complete My Profile</a>
+                    """
                     send_email_notification(
                         user.email,
                         "New Schemes Alert - YojanaMitra",
-                        msg_body
+                        msg_body,
+                        html_content=get_email_html_template("New Schemes Added", html_msg, user.name),
+                        user_name=user.name
                     )
                 else:
                     print(f"⚠️ Email skipped: User {user.id} has no email")
@@ -208,27 +265,44 @@ def notify_users_of_new_schemes(new_schemes_list):
 
             # --- Message construction ---
             if eligible_schemes:
-                scheme_list = ", ".join(eligible_schemes)
-                msg_body = (
-                    f"Hi {user.name}, good news! You are eligible for: "
-                    f"{scheme_list}. Apply now on YojanaMitra!"
-                )
-                email_subject = (
-                    f"You are eligible for {len(eligible_schemes)} new schemes 🎉"
-                )
+                # Format schemes as a bulleted list for HTML
+                schemes_html_list = "".join([f'<li class="scheme-item">{s}</li>' for s in eligible_schemes])
+                
+                html_msg = f"""
+                <p>Good news! You are eligible for <b>{len(eligible_schemes)}</b> new schemes:</p>
+                <ul class="scheme-list">
+                    {schemes_html_list}
+                </ul>
+                <p>Apply now to secure your benefits!</p>
+                <a href="https://yojan-mitra.onrender.com/dashboard" class="btn">View & Apply Now</a>
+                """
+                
+                msg_body = f"Hi {user.name}, you're eligible for {len(eligible_schemes)} new schemes! Check them on YojanaMitra."
+                email_subject = f"You are eligible for {len(eligible_schemes)} new schemes 🎉"
+                email_html = get_email_html_template("Eligibility Match!", html_msg, user.name)
             else:
-                msg_body = (
-                    f"Hi {user.name}, {len(new_schemes_list)} new schemes "
-                    f"have been added: {scheme_names}. Check them out on YojanaMitra."
-                )
+                html_msg = f"""
+                <p><b>{len(new_schemes_list)}</b> new schemes have been added to our platform:</p>
+                <p><i>{scheme_names}</i></p>
+                <p>Check them out to see more details.</p>
+                <a href="https://yojan-mitra.onrender.com/all-schemes" class="btn">Browse All Schemes</a>
+                """
+                msg_body = f"Hi {user.name}, {len(new_schemes_list)} new schemes added. Check them on YojanaMitra."
                 email_subject = "New Schemes Added - YojanaMitra"
+                email_html = get_email_html_template("New Schemes Added", html_msg, user.name)
 
             # --- Dispatch ---
             if user.mobile:
                 send_sms_notification(user.mobile, msg_body)
 
             if user.email:
-                send_email_notification(user.email, email_subject, msg_body)
+                send_email_notification(
+                    user.email, 
+                    email_subject, 
+                    msg_body, 
+                    html_content=email_html,
+                    user_name=user.name
+                )
             else:
                 print(f"⚠️ Email skipped: User {user.id} has no email")
 
@@ -2169,10 +2243,23 @@ def test_notifications():
     results = {}
     
     if email:
+        test_html = f"""
+        <p>Congratulations! Your email notification system is now using <b>Professional HTML Formatting</b>.</p>
+        <p>This update includes:</p>
+        <ul class="scheme-list">
+            <li class="scheme-item">Responsive branded templates</li>
+            <li class="scheme-item">Better readability with lists and bold text</li>
+            <li class="scheme-item">Anti-spam headers (List-Unsubscribe)</li>
+            <li class="scheme-item">Improved sender reputation</li>
+        </ul>
+        <p>If you can see this list and the blue button below, everything is working perfectly!</p>
+        <a href="https://yojan-mitra.onrender.com" class="btn">Return to Portal</a>
+        """
         results['email'] = send_email_notification(
             email, 
-            "YojanaMitra - Test Notification", 
-            "This is a test email from the new SendGrid HTTP system. If you see this, your email system is working on Render!"
+            "YojanaMitra - HTML Email System Check", 
+            "Your email system is now upgraded to HTML formatting!",
+            html_content=get_email_html_template("System Upgrade Successful", test_html, "User")
         )
     
     if phone:

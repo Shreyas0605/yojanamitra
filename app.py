@@ -114,7 +114,7 @@ def get_email_html_template(title, content_html, user_name="User"):
             <div class="footer">
                 <p>&copy; 2026 YojanaMitra. All rights reserved.</p>
                 <p>You received this because you are a registered user of YojanaMitra.</p>
-                <p><a href="https://yojan-mitra.onrender.com/dashboard" style="color: #007bff;">Manage Notifications</a> | <a href="#" style="color: #888;">Unsubscribe</a></p>
+                <p><a href="https://yojanamitra.onrender.com/dashboard" style="color: #007bff;">Manage Notifications</a> | <a href="#" style="color: #888;">Unsubscribe</a></p>
             </div>
         </div>
     </body>
@@ -143,7 +143,7 @@ def send_email_notification(to_email, subject, body, html_content=None, user_nam
             mail_obj = Mail(from_email, to_email_obj, email_subject, content)
             
             # Add Unsubscribe Header for Gmail/Yahoo reputation
-            mail_obj.add_header(Header("List-Unsubscribe", f"<mailto:unsubscribe@yojanamitra.in?subject=unsubscribe>, <https://yojan-mitra.onrender.com/unsubscribe?email={target_email}>"))
+            mail_obj.add_header(Header("List-Unsubscribe", f"<mailto:unsubscribe@yojanamitra.in?subject=unsubscribe>, <https://yojanamitra.onrender.com/unsubscribe?email={target_email}>"))
             
             response = sg.client.mail.send.post(request_body=mail_obj.get())
             
@@ -212,7 +212,7 @@ def notify_users_of_new_schemes(new_schemes_list):
 
         users = User.query.all()
         total_new = len(new_schemes_list)
-        base_url = "https://yojan-mitra.onrender.com"
+        base_url = "https://yojanamitra.onrender.com"
 
         print(f"📢 Starting targeted broadcast for {total_new} schemes to {len(users)} users...")
 
@@ -2345,7 +2345,7 @@ def test_notifications():
     all_schemes = Scheme.query.limit(10).all()
     
     total_new = len(all_schemes)
-    base_url = "https://yojan-mitra.onrender.com"
+    base_url = "https://yojanamitra.onrender.com"
     
     # Targeted Eligibility Check
     eligible_schemes = []

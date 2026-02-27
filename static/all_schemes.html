@@ -23,9 +23,14 @@
                     Mitra</span>
             </a>
             <div class="d-flex align-items-center gap-3 ms-auto">
-                <button class="btn btn-sm text-secondary border-0" onclick="toggleLanguage()">
-                    <i class="fas fa-globe me-1"></i> <span id="lang-btn-text">English</span>
-                </button>
+                <div id="google_translate_element" class="me-2"></div>
+                <script type="text/javascript">
+                    function googleTranslateElementInit() {
+                        new google.translate.TranslateElement({ pageLanguage: 'en', layout: google.translate.TranslateElement.InlineLayout.SIMPLE }, 'google_translate_element');
+                    }
+                </script>
+                <script type="text/javascript"
+                    src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
                 <a href="/all-schemes" class="btn btn-outline-primary btn-sm active">
                     <i class="fas fa-list me-2"></i> Schemes
                 </a>
@@ -246,7 +251,7 @@
                 if (currentLang === 'kn') {
                     const statusText = document.querySelector('#modal-loader p');
                     const originalStatus = statusText.textContent;
-                    statusText.textContent = "Translating content using AI... ✨";
+                    statusText.textContent = "Translating content using AI...";
 
                     try {
                         const tRes = await fetch(`/api/schemes/${schemeId}/translate`, {
@@ -334,49 +339,57 @@
             const schemeId = btn.dataset.schemeId;
             const section = document.getElementById('readiness-section');
             const details = document.getElementById('readiness-details');
-            const status = document.getElementById('readiness-status');
 
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Auditing...';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Analyzing Profile...';
             btn.disabled = true;
 
             try {
-                // 1. Check for Name/Expiry Mismatches
-                const vRes = await fetch('/api/documents/cross-validate');
-                const vData = await vRes.json();
+                const response = await fetch(`/api/schemes/${schemeId}/readiness-ai`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
 
-                // 2. Fetch User Documents to check against required docs for this scheme
-                const dRes = await fetch('/api/documents');
-                const dData = await dRes.json();
-
-                // 3. Get modern audit (placeholder logic for prototype)
-                // In a real app, the backend would compare doc types vs required docs
-                const currentDocs = dData.documents.map(d => d.docType.toLowerCase());
-
-                let reportHtml = '';
-                let hasCriticalIssue = false;
-
-                if (vData.issues && vData.issues.length > 0) {
-                    hasCriticalIssue = true;
-                    reportHtml += '<div class="mb-2"><strong>⚠️ Data Conflicts Found:</strong></div>';
-                    vData.issues.forEach(iss => {
-                        reportHtml += `<div class="text-danger mb-1">• ${iss.message}</div>`;
-                    });
+                if (!response.ok) {
+                    throw new Error(data.error || "Failed to analyze readiness.");
                 }
 
-                if (currentDocs.length === 0) {
-                    reportHtml += '<div class="mt-2 text-warning"><strong>📂 No documents found in your vault.</strong> Please upload your Aadhaar and Income certificate to verify eligibility.</div>';
-                } else {
-                    reportHtml += `<div class="mt-2 text-success"><strong>✅ Found ${currentDocs.length} documents in vault.</strong> AI verified your identity.</div>`;
-                }
+                const items = data.items || [];
+                const score = data.score || 0;
+
+                let reportHtml = `
+                    <div class="analysis-report mt-3" style="border-top: 1px solid #e2e8f0; padding-top: 20px;">
+                        <h6 class="fw-bold text-dark mt-2 mb-4"><i class="fas fa-microchip text-primary me-2"></i> AI Readiness Insight Report</h6>
+                        <div class="report-items">
+                            ${items.map(item => `
+                                <div class="report-item d-flex gap-3 mb-4">
+                                    <div class="report-icon pt-1">
+                                        <i class="fas ${item.icon} text-${item.type === 'error' ? 'danger' : (item.type === 'warning' ? 'warning' : 'success')}" style="font-size: 1.4rem;"></i>
+                                    </div>
+                                    <div class="report-text w-100">
+                                        <div class="d-flex justify-content-between">
+                                            <span class="fw-bold ${item.type === 'error' ? 'text-danger' : (item.type === 'warning' ? 'text-warning' : 'text-success')}" style="font-size: 1rem;">${item.title}</span>
+                                            <span class="badge ${item.type === 'error' ? 'bg-danger' : (item.type === 'warning' ? 'bg-warning' : 'bg-success')} bg-opacity-10 text-${item.type === 'error' ? 'danger' : (item.type === 'warning' ? 'dark' : 'success')} border border-${item.type === 'error' ? 'danger' : (item.type === 'warning' ? 'warning' : 'success')} px-2" style="font-size: 0.7rem;">${item.type.toUpperCase()}</span>
+                                        </div>
+                                        <div class="text-dark small mt-1" style="line-height: 1.4; font-weight: 500;">${item.text}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center bg-white p-3 rounded border mt-4 shadow-sm">
+                            <span class="badge ${score > 70 ? 'bg-success' : (score > 40 ? 'bg-warning' : 'bg-danger')} py-2 px-3 fs-6">
+                                ${score > 70 ? 'Ready to Apply' : (score > 40 ? 'Partial Match' : 'Action Required')}
+                            </span>
+                            <div class="text-dark fw-bold">Readiness Score: <span class="fs-5">${score}%</span></div>
+                        </div>
+                    </div>
+                `;
 
                 details.innerHTML = reportHtml;
-                status.className = hasCriticalIssue ? 'badge bg-danger' : (currentDocs.length > 0 ? 'badge bg-success' : 'badge bg-warning');
-                status.textContent = hasCriticalIssue ? 'Action Required' : (currentDocs.length > 0 ? 'Verified & Ready' : 'Documents Missing');
-
                 section.style.display = 'block';
             } catch (err) {
                 console.error(err);
-                alert("Audit failed. Make sure you are logged in.");
+                alert("Audit failed: " + err.message);
             } finally {
                 btn.innerHTML = '<i class="fas fa-magnifying-glass-chart me-2"></i> Check My Readiness';
                 btn.disabled = false;
@@ -464,7 +477,7 @@
                     <div id="modal-loader" class="text-center py-5">
                         <div class="spinner-border text-primary"></div>
                         <p class="mt-3 text-secondary fw-semibold" data-lang-key="modal_loading_details">Loading
-                            details... ✨</p>
+                            details... </p>
                     </div>
 
                     <div id="modal-content-area" style="display: none;">
@@ -476,13 +489,8 @@
                             <h4 id="modal-name" class="fw-bold text-dark mb-2"></h4>
                             <p id="modal-description" class="text-secondary mb-0"></p>
 
-                            <div id="readiness-section" class="mt-4 p-3 rounded"
-                                style="background: #eef2ff; border: 1px solid #c7d2fe; display: none;">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <h6 class="fw-bold text-indigo mb-0"><i class="fas fa-check-double me-2"></i>
-                                        Document Readiness Report</h6>
-                                    <span id="readiness-status" class="badge bg-success">Ready to Apply</span>
-                                </div>
+                            <div id="readiness-section" class="mt-4 p-4 rounded bg-white shadow-sm"
+                                style="border: 1px solid #eef2ff; display: none;">
                                 <div id="readiness-details" class="small text-dark"></div>
                             </div>
 
@@ -530,9 +538,9 @@
                 <div class="modal-footer border-0 p-4">
                     <a id="modal-apply-btn-hidden" href="#" target="_blank" style="display:none;"></a>
                     <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Close</button>
-                    <button onclick="startAidedApplication()" class="btn btn-primary px-4 shadow-sm">
-                        <span data-lang-key="modal_apply_button">Apply with AI Helper</span> <i
-                            class="fas fa-magic ms-2"></i>
+                    <button id="modal-apply-btn" onclick="startAidedApplication()"
+                        class="btn btn-primary px-4 shadow-sm">
+                        <span data-lang-key="modal_apply_button">View and Apply</span> <i class="fas fa-magic ms-2"></i>
                     </button>
                 </div>
             </div>

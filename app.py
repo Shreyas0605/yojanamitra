@@ -869,16 +869,16 @@ def login():
     email = data.get('email', '').lower().strip()
     password = data.get('password')
     
-    print(f"DEBUG: Login attempt for {email}")
+    safe_print(f"DEBUG: Login attempt for {email}")
     
     # Check if Admin
     admin = Admin.query.filter_by(email=email).first()
     if admin:
-        print(f"DEBUG: Admin found for {email}")
+        safe_print(f"DEBUG: Admin found for {email}")
         if check_password_hash(admin.password_hash, password):
             session['user_id'] = admin.id
             session['user_type'] = 'admin'
-            print(f"DEBUG: Admin login successful for {email}")
+            safe_print(f"DEBUG: Admin login successful for {email}")
             return jsonify({
                 'message': 'Admin login successful', 
                 'user': {
@@ -889,27 +889,27 @@ def login():
                 }
             }), 200
         else:
-            print(f"DEBUG: Admin password mismatch for {email}")
+            safe_print(f"DEBUG: Admin password mismatch for {email}")
 
     # Check if Normal User
     user = User.query.filter_by(email=email).first()
     if user:
-        print(f"DEBUG: User found for {email}")
+        safe_print(f"DEBUG: User found for {email}")
         if check_password_hash(user.password_hash, password):
             session['user_id'] = user.id
             session['user_type'] = 'user'
-            print(f"DEBUG: User login successful for {email}")
+            safe_print(f"DEBUG: User login successful for {email}")
             return jsonify({'message': 'Login successful', 'user': user.to_dict()}), 200
         else:
-            print(f"DEBUG: User password mismatch for {email}")
+            safe_print(f"DEBUG: User password mismatch for {email}")
     else:
-        print(f"DEBUG: No user found for {email}")
+        safe_print(f"DEBUG: No user found for {email}")
 
     return jsonify({'error': 'Invalid email or password'}), 401
 
 @app.route('/api/logout', methods=['GET', 'POST'])
 def logout():
-    print(f"DEBUG: Logout triggered for user_id={session.get('user_id')}, type={session.get('user_type')}")
+    safe_print(f"DEBUG: Logout triggered for user_id={session.get('user_id')}, type={session.get('user_type')}")
     session.clear()
     return jsonify({'message': 'Logout successful'}), 200
 
@@ -972,16 +972,16 @@ def google_auth():
             )
             db.session.add(user)
             db.session.commit()
-            print(f"DEBUG: Created new user via Google Auth: {email}")
+            safe_print(f"DEBUG: Created new user via Google Auth: {email}")
         
         session['user_id'] = user.id
         session['user_type'] = 'user'
-        print(f"DEBUG: Google login successful for {email}")
+        safe_print(f"DEBUG: Google login successful for {email}")
         
         return jsonify({'message': 'Google login successful', 'user': user.to_dict()}), 200
         
     except Exception as e:
-        print(f"DEBUG: Google Auth Error: {str(e)}")
+        safe_print(f"DEBUG: Google Auth Error: {str(e)}")
         return jsonify({'error': 'Google authentication failed'}), 401
 
 @app.route('/api/user', methods=['GET'])
@@ -1054,6 +1054,120 @@ def get_user_documents():
     documents = UserDocument.query.filter_by(user_id=user_id).order_by(UserDocument.upload_date.desc()).all()
     return jsonify({'documents': [doc.to_dict() for doc in documents]}), 200
 
+@app.route('/api/documents/<int:doc_id>', methods=['POST'])
+def delete_document(doc_id):
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    doc = UserDocument.query.get(doc_id)
+    if not doc:
+        return jsonify({'error': 'Document not found'}), 404
+    
+    if doc.user_id != user_id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        # Delete file from disk
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], doc.filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            
+        db.session.delete(doc)
+        db.session.commit()
+        return jsonify({'message': 'Document deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/documents/sync-profile', methods=['POST'])
+def sync_profile_from_vault():
+    """
+    Scans all user documents and updates the profile with extracted data.
+    """
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    user = User.query.get(user_id)
+    documents = UserDocument.query.filter_by(user_id=user_id).all()
+    
+    if not documents:
+        return jsonify({'error': 'No documents found in vault to sync'}), 400
+    
+    # Field Mapping Configuration
+    field_map = {
+        'Name': 'name',
+        'Full Name': 'name',
+        'Gender': 'gender',
+        'Date of Birth': 'dob',
+        'DOB': 'dob',
+        'Annual Income': 'annual_family_income',
+        'Income': 'income',
+        'Annual Family Income': 'annual_family_income',
+        'Age': 'age',
+        'Ration Card Type': 'ration_card_type',
+        'Caste': 'caste',
+        'Category': 'caste',
+        'Sub-Caste': 'sub_caste'
+    }
+
+    modified_fields = []
+    
+    # Placeholders to allow overwriting
+    placeholders = ['Test', 'test@example.com', '100', 100, '01-01-1990', 'Single', 'None', '', None]
+
+    for doc in documents:
+        try:
+            data = json.loads(doc.extracted_data) if doc.extracted_data else {}
+        except:
+            continue
+
+        for doc_key, user_field in field_map.items():
+            val = data.get(doc_key)
+            if not val:
+                continue
+
+            current_val = getattr(user, user_field)
+            
+            # Determine if we should update:
+            # 1. Field is empty/placeholder
+            # 2. Field is 'name' and currently 'Test'
+            # 3. High confidence update
+            should_update = False
+            if current_val in placeholders:
+                should_update = True
+            elif not current_val:
+                should_update = True
+            
+            # Specific check for Name placeholder
+            if user_field == 'name' and (not current_val or current_val.lower() == 'test'):
+                should_update = True
+
+            if should_update:
+                try:
+                    if user_field in ['income', 'annual_family_income', 'age', 'total_family_members']:
+                        # Handle numeric cleaning
+                        clean_num = int(str(val).replace(',', '').split('.')[0])
+                        setattr(user, user_field, clean_num)
+                    else:
+                        setattr(user, user_field, str(val))
+                    
+                    if user_field not in modified_fields:
+                        modified_fields.append(user_field)
+                except Exception as e:
+                    print(f"Sync error for {user_field}: {e}")
+                    pass
+    
+    if modified_fields:
+        db.session.commit()
+        return jsonify({
+            'message': 'Profile synced successfully',
+            'fields': list(set(modified_fields))
+        }), 200
+    else:
+        return jsonify({'message': 'Profile already up to date', 'fields': []}), 200
+
 @app.route('/api/documents/cross-validate', methods=['GET'])
 def cross_validate_documents():
     """
@@ -1064,12 +1178,16 @@ def cross_validate_documents():
         return jsonify({'error': 'Not logged in'}), 401
     
     user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found', 'issues': []}), 200
+        
     documents = UserDocument.query.filter_by(user_id=user_id).all()
     
     issues = []
     processed_names = []
     
-    user_name_parts = set(user.name.lower().split())
+    user_name = user.name or "User"
+    user_name_parts = set(user_name.lower().split())
     
     for doc in documents:
         data = json.loads(doc.extracted_data) if doc.extracted_data else {}
@@ -1338,7 +1456,7 @@ def translate_scheme(scheme_id):
         # Handle potential response formatting issues
         text = response.text.replace('```json', '').replace('```', '').strip()
         translated_data = json.loads(text)
-        print(f"DEBUG: Translate JSON parsed successfully. Keys: {list(translated_data.keys())}")
+        safe_print(f"DEBUG: Translate JSON parsed successfully. Keys: {list(translated_data.keys())}")
         
         # 3. Save to Cache (Dump entire JSON)
         translation = SchemeTranslation(
@@ -1365,6 +1483,102 @@ def translate_scheme(scheme_id):
              
         traceback.print_exc()
         return jsonify({'error': f'Translation failed: {error_msg}'}), 500
+
+@app.route('/api/schemes/<int:scheme_id>/readiness-ai', methods=['POST', 'GET'])
+def analyze_scheme_readiness_ai(scheme_id):
+    """
+    Uses Gemini AI to perform a deep cross-analysis of scheme criteria
+    against the user's exact profile and verified documents.
+    """
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+        
+    if not GEMINI_API_KEY:
+        return jsonify({'error': 'AI Verification service offline'}), 503
+        
+    user = User.query.get(user_id)
+    if not user:
+         return jsonify({'error': 'User profile not found'}), 404
+         
+    scheme = Scheme.query.get_or_404(scheme_id)
+    docs = UserDocument.query.filter_by(user_id=user_id).all()
+    
+    # 1. Structure the User Data
+    user_data = user.to_dict().get('profile', {})
+    user_data['Name'] = user.name
+    
+    # Remove empty/null values to save tokens
+    user_data_clean = {k: v for k, v in user_data.items() if v}
+    
+    # 2. Structure Vault Docs
+    doc_types = [d.doc_type for d in docs if d.doc_type]
+    
+    # 3. Build the specific Prompt
+    prompt = f"""
+    You are an expert government scheme auditor and eligibility evaluator.
+    Perform a strict cross-analysis between the Scheme Requirements and the Applicant's Profile/Documents.
+    
+    SCHEME DETAILS:
+    - Name: {scheme.name}
+    - Eligibility: {scheme.eligibility}
+    - Criteria Details: {scheme.criteria if hasattr(scheme, 'criteria') else scheme.description}
+    - Required Docs: {scheme.documents_required}
+    
+    APPLICANT PROFILE:
+    {json.dumps(user_data_clean, indent=2)}
+    
+    APPLICANT VERIFIED DOCUMENTS IN VAULT:
+    {', '.join(doc_types) if doc_types else 'None'}
+    
+    TASK:
+    Generate a JSON response containing an overall 'score' (0-100) and an 'items' array.
+    Each item in the array must be an analysis point regarding their eligibility, demographics, financial standing, or documentation.
+    For each item, provide:
+    - "title": Short title (e.g. "Age Eligibility", "Documentation Readiness")
+    - "text": Detailed, specific explanation comparing their profile to the rule.
+    - "type": "success" (if they meet it), "warning" (if missing doc or unclear), or "error" (if they definitely fail a rule).
+    - "icon": A FontAwesome icon class (e.g. "fa-circle-check", "fa-circle-exclamation", "fa-circle-xmark").
+    
+    Format the output purely as valid JSON without markdown wrapping:
+    {{
+       "score": 85,
+       "items": [
+          {{
+            "title": "...",
+            "text": "...",
+            "type": "...",
+            "icon": "..."
+          }}
+       ]
+    }}
+    """
+    
+    try:
+        response = model.generate_content(prompt)
+        text = response.text.replace('```json', '').replace('```', '').strip()
+        result = json.loads(text)
+        
+        # Validate structure roughly
+        if 'score' not in result or 'items' not in result:
+             raise ValueError("AI returned invalid structure")
+             
+        return jsonify(result), 200
+        
+    except Exception as e:
+        safe_print(f"ERROR in AI Readiness Analysis: {str(e)}")
+        # Fallback to empty/basic response to avoid completely breaking the UI
+        return jsonify({{
+            "score": 0,
+            "items": [
+                {{
+                    "title": "AI Analysis Failed",
+                    "text": f"Could not complete AI audit: {str(e)}",
+                    "type": "error",
+                    "icon": "fa-triangle-exclamation"
+                }}
+            ]
+        }}), 500
 
 @app.route('/api/schemes', methods=['POST'])
 def create_scheme():
@@ -1873,6 +2087,12 @@ EDUCATION_LEVELS = {
     '': 0
 }
 
+def safe_print(msg):
+    try:
+        print(msg)
+    except Exception:
+        pass
+
 def calculate_match_score(user, scheme):
     """
     Maximum Precision Matching Engine (98%+)
@@ -1897,15 +2117,15 @@ def calculate_match_score(user, scheme):
         
     # 2. Gender Guard
     if not is_in_json(user.gender, scheme.allowed_genders):
-        print(f"DEBUG: Failed Gender Guard for {scheme.name}")
+        safe_print(f"DEBUG: Failed Gender Guard for {scheme.name}")
         return 0
         
     # 3. Age Guard
     if scheme.min_age and (user.age is None or user.age < scheme.min_age):
-        print(f"DEBUG: Failed Min Age Guard for {scheme.name}")
+        safe_print(f"DEBUG: Failed Min Age Guard for {scheme.name}")
         return 0
     if scheme.max_age and (user.age is None or user.age > scheme.max_age):
-        print(f"DEBUG: Failed Max Age Guard for {scheme.name}")
+        safe_print(f"DEBUG: Failed Max Age Guard for {scheme.name}")
         return 0
 
     # 4. Caste Guard
@@ -1916,7 +2136,7 @@ def calculate_match_score(user, scheme):
     # 5. Income Guard (Strict Limit)
     if scheme.max_income is not None:
         if user.income is None or user.income > scheme.max_income:
-            print(f"DEBUG: Failed Income Guard for {scheme.name}")
+            safe_print(f"DEBUG: Failed Income Guard for {scheme.name}")
             return 0 # Fail if over limit or if info is missing (Precision)
 
     # 6. Occupation Guard
@@ -1929,17 +2149,17 @@ def calculate_match_score(user, scheme):
     # 6b. Parent Occupation Guards (Holistic Precision)
     if getattr(scheme, 'allowed_father_occupations', None):
         if not is_in_json(getattr(user, 'father_occupation', ''), scheme.allowed_father_occupations):
-            print(f"DEBUG: Failed Father Occ Guard for {scheme.name}")
+            safe_print(f"DEBUG: Failed Father Occ Guard for {scheme.name}")
             return 0
     if getattr(scheme, 'allowed_mother_occupations', None):
         if not is_in_json(getattr(user, 'mother_occupation', ''), scheme.allowed_mother_occupations):
-            print(f"DEBUG: Failed Mother Occ Guard for {scheme.name}")
+            safe_print(f"DEBUG: Failed Mother Occ Guard for {scheme.name}")
             return 0
 
     # 6c. Religion Guard
     if getattr(scheme, 'allowed_religions', None):
         if not is_in_json(getattr(user, 'religion', ''), scheme.allowed_religions):
-            print(f"DEBUG: Failed Religion Guard for {scheme.name}")
+            safe_print(f"DEBUG: Failed Religion Guard for {scheme.name}")
             return 0
 
     # 6d. Land Type Guard
@@ -1963,28 +2183,28 @@ def calculate_match_score(user, scheme):
     # 8. Residence Guard (Urban/Rural)
     if scheme.residence_requirement and scheme.residence_requirement != 'Any':
         if user.residence != scheme.residence_requirement:
-            print(f"DEBUG: Failed Residence Guard for {scheme.name}")
+            safe_print(f"DEBUG: Failed Residence Guard for {scheme.name}")
             return 0
 
     # 9. Social Requirement Guards
     if scheme.minority_requirement == 'Yes' and user.minority_status != 'Yes':
-        print(f"DEBUG: Failed Minority Guard for {scheme.name}")
+        safe_print(f"DEBUG: Failed Minority Guard for {scheme.name}")
         return 0
     if scheme.widow_requirement == 'Yes' and user.is_widow_single_woman != 'Yes':
-        print(f"DEBUG: Failed Widow Guard for {scheme.name}")
+        safe_print(f"DEBUG: Failed Widow Guard for {scheme.name}")
         return 0
     if scheme.disability_requirement == 'Yes' and user.disability != 'Yes':
-        print(f"DEBUG: Failed Disability Guard for {scheme.name}")
+        safe_print(f"DEBUG: Failed Disability Guard for {scheme.name}")
         return 0
     if scheme.senior_citizen_requirement == 'Yes':
         if not (user.is_senior_citizen == 'Yes' or (user.age and user.age >= 60)):
-            print(f"DEBUG: Failed Senior Guard for {scheme.name}")
+            safe_print(f"DEBUG: Failed Senior Guard for {scheme.name}")
             return 0
 
     # 10. Marital Status Guard
     if scheme.allowed_marital_status:
         if not is_in_json(user.marital_status, scheme.allowed_marital_status):
-            print(f"DEBUG: Failed Marital Guard for {scheme.name}")
+            safe_print(f"DEBUG: Failed Marital Guard for {scheme.name}")
             return 0
 
     # --- PHASE 1.5: KEYWORD SECURITY GUARD (Advanced Precision) ---

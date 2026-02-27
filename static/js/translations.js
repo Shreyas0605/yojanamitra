@@ -213,14 +213,14 @@ const translations = {
     "Apply on Official Portal": "ಅಧಿಕೃತ ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಅನ್ವಯಿಸಿ",
     "Close": "ಮುಚ್ಚಿ",
     "modal_verified_source": "ಪರಿಶೀಲಿಸಿದ ಮೂಲ",
-    "modal_loading_details": "ವಿವರಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ... ✨",
+    "modal_loading_details": "ವಿವರಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ...",
     "modal_category_default": "ವರ್ಗ",
     "modal_benefits_title": "ಪ್ರಯೋಜನಗಳು",
     "modal_eligibility_title": "ಅರ್ಹತಾ ಮಾನದಂಡಗಳು",
     "modal_exclusions_title": "ಪ್ರಮುಖ ವಿನಾಯಿತಿಗಳು",
     "modal_process_title": "ಅರ್ಜಿ ಸಲ್ಲಿಕೆ ಪ್ರಕ್ರಿಯೆ",
     "modal_documents_title": "ಅಗತ್ಯವಿರುವ ದಾಖಲೆಗಳು",
-    "modal_apply_button": "ಅಧಿಕೃತ ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಅನ್ವಯಿಸಿ"
+    "modal_apply_button": "ವೀಕ್ಷಿಸಿ ಮತ್ತು ಅನ್ವಯಿಸಿ"
 };
 
 let currentLang = localStorage.getItem('site_lang') || 'en';

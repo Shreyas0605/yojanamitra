@@ -34,9 +34,14 @@
 
                 <!-- Right Side Actions -->
                 <div class="d-flex align-items-center gap-3">
-                    <button class="btn btn-sm text-secondary border-0" onclick="toggleLanguage()">
-                        <i class="fas fa-globe me-1"></i> <span id="lang-btn-text">English</span>
-                    </button>
+                    <div id="google_translate_element" class="me-2"></div>
+                    <script type="text/javascript">
+                        function googleTranslateElementInit() {
+                            new google.translate.TranslateElement({ pageLanguage: 'en', layout: google.translate.TranslateElement.InlineLayout.SIMPLE }, 'google_translate_element');
+                        }
+                    </script>
+                    <script type="text/javascript"
+                        src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 
                     <a href="/all-schemes" class="text-dark fw-medium text-decoration-none me-3"
                         style="font-size: 0.95rem;">
@@ -116,10 +121,11 @@
                                         Find My Schemes
                                         <i class="fas fa-arrow-right ms-2"></i>
                                     </button>
-                                    <button class="btn-hero-secondary" onclick="showPage('login')">
-                                        <i class="fas fa-play-circle me-2"></i>
-                                        Watch Demo
-                                    </button>
+                                    <a href="/all_schemes.html"
+                                        class="btn-hero-secondary text-decoration-none d-flex align-items-center justify-content-center">
+                                        <i class="fas fa-list-ul me-2"></i>
+                                        All Schemes
+                                    </a>
                                 </div>
 
                                 <!-- Trust Indicators -->
@@ -261,7 +267,7 @@
                             <div class="feature-card"
                                 style="border: 2px solid #eef2ff; background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);">
                                 <div class="icon-square" style="background: #4f46e5; color: white;">
-                                    <i class="fas fa-shield-halved"></i>
+                                    <i class="fas fa-file-shield"></i>
                                 </div>
                                 <h3 class="text-indigo">AI Document Auditor</h3>
                                 <p>Upload your IDs and let AI cross-verify them. Detect mismatches and expiry dates
@@ -846,7 +852,7 @@
 
             const resultsDiv = document.getElementById('eligibility-results');
             const listDiv = document.getElementById('eligibility-schemes-list');
-            listDiv.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-primary fw-bold">Magic Match in progress... ✨</p></div>';
+            listDiv.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-primary fw-bold">Magic Match in progress...</p></div>';
             resultsDiv.style.display = 'block';
             listDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -1288,65 +1294,6 @@
                         </div>
                     </div>
 
-                    <!-- NEW: Document Validation Section -->
-                    <div id="document-validation-section" class="mt-5">
-                        <h4 class="fw-bold text-dark mb-3">
-                            <i class="fas fa-id-card text-primary me-2"></i>Identity Verification
-                        </h4>
-                        <div class="card border-0 shadow-sm" style="border-radius: 12px; background: #f8fafc;">
-                            <div class="card-body p-4">
-                                <p class="text-muted small mb-3">
-                                    Upload your Aadhaar or Income Certificate to verify your identity.
-                                    We check for <strong>name mismatches</strong> between your profile and document to
-                                    prevent application rejections.
-                                </p>
-                                <form id="doc-validation-form" class="row g-3 align-items-end">
-                                    <div class="col-md-5">
-                                        <label class="form-label small fw-bold">Select Document Type</label>
-                                        <select name="type" class="form-select form-select-sm">
-                                            <option value="Aadhaar">Aadhaar Card</option>
-                                            <option value="Income">Income Certificate</option>
-                                            <option value="Caste">Caste Certificate</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-5">
-                                        <label class="form-label small fw-bold">Upload Image</label>
-                                        <input type="file" name="file" class="form-control form-control-sm"
-                                            accept="image/*" required>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <button type="submit" class="btn btn-sm btn-primary w-100">
-                                            <i class="fas fa-check-circle me-1"></i>Verify
-                                        </button>
-                                    </div>
-                                </form>
-                                <div id="validation-result" class="mt-3" style="display:none;"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- NEW: Future Opportunities Section -->
-                    <div id="future-opportunities-section" class="mt-5 mb-5">
-                        <div class="card border-0 shadow-sm"
-                            style="background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);">
-                            <div class="card-body p-4 text-center">
-                                <h5 class="fw-bold text-primary mb-2">
-                                    <i class="fas fa-crystal-ball me-2"></i>Predictive Forecasting
-                                </h5>
-                                <p class="text-muted small mb-3">
-                                    Curious about what schemes you'll be eligible for in the future?
-                                    Our AI analyzes your profile trajectory to predict upcoming opportunities.
-                                </p>
-                                <button onclick="checkFutureOpportunities()"
-                                    class="btn btn-outline-primary rounded-pill px-4">
-                                    <i class="fas fa-search-plus me-2"></i>Check Future Eligibility
-                                </button>
-                                <div id="future-results" class="mt-4 text-start" style="display:none;">
-                                    <!-- Populated by JS -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div><!-- End Col -->
             </div><!-- End Row -->
         </div><!-- End profile-main-content -->
@@ -2742,95 +2689,6 @@
             modal.show();
         }
 
-        // --- New Feature Functions ---
-
-        // 1. Predictive Forecasting
-        async function checkFutureOpportunities() {
-            const container = document.getElementById('future-results');
-            container.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary spinner-border-sm"></div> Analyzing trajectory...</div>';
-            container.style.display = 'block';
-
-            try {
-                const res = await fetch('/api/predictive/lifecycle', { method: 'GET' });
-                const data = await res.json();
-
-                if (!data.forecast || data.forecast.length === 0) {
-                    container.innerHTML = '<div class="alert alert-info small">No future schemes predicted based on current profile trajectory.</div>';
-                    return;
-                }
-
-                let html = '<div class="row g-3">';
-                data.forecast.forEach(f => {
-                    html += `
-                    <div class="col-12">
-                        <div class="p-3 border rounded bg-white">
-                            <h6 class="text-primary fw-bold mb-2"><i class="fas fa-clock me-2"></i>${f.timeframe}</h6>
-                            <ul class="mb-0 ps-3 small text-muted">
-                                ${f.opportunities.map(op => `<li><strong>${op.name}</strong>: ${op.reason}</li>`).join('')}
-                            </ul>
-                        </div>
-                    </div>`;
-                });
-                html += '</div>';
-                container.innerHTML = html;
-
-            } catch (e) {
-                console.error("Predictive error:", e);
-                container.innerHTML = '<div class="text-danger small">Failed to load predictions. Ensure you are logged in.</div>';
-            }
-        }
-
-        // 2. Document Validation
-        document.getElementById('doc-validation-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const resultDiv = document.getElementById('validation-result');
-            resultDiv.innerHTML = '<div class="text-center"><span class="spinner-border spinner-border-sm text-primary"></span> Verifying document via Gemini Vision...</div>';
-            resultDiv.style.display = 'block';
-
-            const formData = new FormData(e.target);
-
-            try {
-                const res = await fetch('/api/validate-document', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await res.json();
-
-                if (data.error) {
-                    resultDiv.innerHTML = `<div class="alert alert-danger small mb-0">${data.error}</div>`;
-                    return;
-                }
-
-                // Parse Validation Rules
-                const val = data.validation;
-                let reportHtml = `
-                    <div class="alert ${val.nameMatch ? 'alert-success' : 'alert-warning'} small mb-0">
-                        <h6 class="alert-heading fw-bold mb-1">Verification Report</h6>
-                        <hr class="my-2">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span>Identity Match:</span>
-                            <span class="fw-bold ${val.nameMatch ? 'text-success' : 'text-danger'}">
-                                ${val.nameMatch ? '<i class="fas fa-check-circle me-1"></i>Verified' : '<i class="fas fa-times-circle me-1"></i>Mismatch'}
-                            </span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-1">
-                            <span>Document Expiry:</span>
-                            <span class="fw-bold text-dark">${val.expiryMessage}</span>
-                        </div>
-                        <div class="mt-2 text-muted fst-italic">
-                            Score: ${(val.readinessScore * 100).toFixed(0)}%
-                            ${!val.nameMatch ? '<br><strong>Note:</strong> Name on card differs from profile name. This might cause rejection.' : ''}
-                        </div>
-                    </div>`;
-
-                resultDiv.innerHTML = reportHtml;
-
-            } catch (e) {
-                console.error("Validation error:", e);
-                resultDiv.innerHTML = '<div class="alert alert-danger small">Error validating document.</div>';
-            }
-        };
-
         // --- INITIALIZATION ---
         // Show home page on load and check authentication
         (async function init() {
@@ -2871,7 +2729,7 @@
                 <div class="modal-body p-0">
                     <div id="modal-loader" class="text-center py-5">
                         <div class="spinner-border text-primary" role="status"></div>
-                        <p class="mt-3 text-secondary fw-semibold">Gleaning details... ✨</p>
+                        <p class="mt-3 text-secondary fw-semibold">Gleaning details...</p>
                     </div>
 
                     <div id="modal-content-area" style="display: none;">

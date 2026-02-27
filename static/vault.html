@@ -5,214 +5,278 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Document Vault - YojanaMitra</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
-            --primary: #1e3c72;
-            --secondary: #2a5298;
-            --accent: #007bff;
-            --background: #f4f7f9;
+            --primary: #2563eb;
+            --secondary: #64748b;
+            --accent: #f59e0b;
         }
 
         body {
-            background-color: var(--background);
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #f0f4f8;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
 
-        .vault-container {
-            max-width: 1000px;
-            margin: 40px auto;
-            padding: 20px;
+        /* Navbar Styling */
+        .navbar {
+            background-color: #1e293b !important;
+            padding: 15px 0;
+            border: none !important;
         }
 
+        .navbar-brand span {
+            color: #ffffff !important;
+        }
+
+        .nav-link {
+            color: #cbd5e1 !important;
+            font-weight: 500;
+        }
+
+        .nav-link.active,
+        .nav-link:hover {
+            color: #ffffff !important;
+        }
+
+        /* Blue Header Section */
         .vault-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
+            background-color: #2b5cb3;
+            color: white;
+            padding: 40px 0;
+            margin-bottom: -50px;
+            /* Overlap with grid below */
+            padding-bottom: 90px;
         }
 
+        .vault-header h2 {
+            font-weight: 700;
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        .vault-header p {
+            color: #e2e8f0;
+            font-size: 1rem;
+        }
+
+        /* Upload Zone */
         .upload-zone {
             background: white;
-            border: 2px dashed #cbd5e0;
             border-radius: 12px;
-            padding: 40px;
+            padding: 50px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
             position: relative;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 2px dashed rgba(255, 255, 255, 0);
         }
 
         .upload-zone:hover,
         .upload-zone.dragover {
-            border-color: var(--accent);
-            background: #ebf8ff;
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.95);
         }
 
-        .upload-zone i {
-            font-size: 48px;
-            color: var(--accent);
-            margin-bottom: 15px;
-        }
-
-        .doc-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-        }
-
-        .doc-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            transition: transform 0.2s;
-            position: relative;
-            border-left: 4px solid var(--accent);
-        }
-
-        .doc-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .doc-type {
-            font-weight: bold;
-            font-size: 1.1em;
-            color: var(--primary);
-            margin-bottom: 8px;
-            display: block;
-        }
-
-        .doc-meta {
-            font-size: 0.9em;
-            color: #666;
-            margin-bottom: 12px;
-        }
-
-        .confidence-tag {
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.8em;
-            background: #e2e8f0;
-        }
-
-        .audit-panel {
-            background: #fff5f5;
-            border: 1px solid #feb2b2;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 30px;
-            display: none;
-        }
-
-        .issue-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            margin-bottom: 10px;
-            padding: 10px;
-            background: white;
-            border-radius: 8px;
-            border-left: 4px solid #f56565;
-        }
-
-        .issue-item i {
-            color: #f56565;
-            font-size: 1.2em;
-        }
-
-        .loader {
-            display: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.8);
-            border-radius: 12px;
-            justify-content: center;
+        .upload-icon-wrapper {
+            background-color: #dbeafe;
+            color: #2563eb;
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            display: inline-flex;
             align-items: center;
-            z-index: 10;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 20px;
         }
 
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--accent);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+        /* Doc Cards */
+        .doc-card-hover {
+            border-radius: 12px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
         }
 
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
+        .doc-card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+        }
 
-            100% {
-                transform: rotate(360deg);
-            }
+        .match-badge {
+            background-color: #dcfce7;
+            color: #166534;
+            font-weight: 600;
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        .delete-btn {
+            color: #ef4444;
+            background: #fee2e2;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .delete-btn:hover {
+            background: #fecaca;
+        }
+
+        .data-table {
+            width: 100%;
+            font-size: 0.85rem;
+            margin-top: 15px;
+            margin-bottom: 20px;
+        }
+
+        .data-table th {
+            color: var(--secondary);
+            font-weight: 500;
+            padding: 8px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .data-table td {
+            font-weight: 600;
+            color: #1e293b;
+            padding: 8px 0;
+            text-align: right;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 10px;
         }
     </style>
 </head>
 
 <body>
-    <nav class="main-navbar">
-        <div class="nav-content">
-            <a href="/" class="logo">YojanaMitra</a>
-            <div class="nav-links">
-                <a href="/"><i class="fas fa-home"></i> Home</a>
-                <a href="/vault.html" class="active"><i class="fas fa-shield-halved"></i> My Vault</a>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg sticky-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="/">
+                <span style="font-size: 1.4rem; font-weight: 700;">YojanaMitra</span>
+            </a>
+            <div class="d-flex align-items-center gap-4 ms-auto">
+                <div id="google_translate_element" class="me-2"></div>
+                <script type="text/javascript">
+                    function googleTranslateElementInit() {
+                        new google.translate.TranslateElement({ pageLanguage: 'en', layout: google.translate.TranslateElement.InlineLayout.SIMPLE }, 'google_translate_element');
+                    }
+                </script>
+                <script type="text/javascript"
+                    src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+                <a href="/" class="nav-link text-decoration-none">
+                    <i class="fas fa-home me-1"></i> Home
+                </a>
+                <a href="/vault.html" class="nav-link text-decoration-none active">
+                    My Vault
+                </a>
             </div>
         </div>
     </nav>
 
-    <div class="vault-container">
-        <div class="vault-header">
-            <div>
-                <h1>Document Vault</h1>
-                <p>Securely store and verify your documents with AI</p>
-            </div>
-            <button class="btn" onclick="checkMismatches()"><i class="fas fa-sync"></i> Audit Documents</button>
-        </div>
-
-        <div id="auditResults" class="audit-panel">
-            <h3><i class="fas fa-triangle-exclamation"></i> Potential Application Blockers</h3>
-            <div id="issuesList"></div>
-        </div>
-
-        <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-            <div class="loader" id="uploadLoader">
-                <div style="text-align:center">
-                    <div class="spinner" style="margin: 0 auto 10px"></div>
-                    <p>AI is analyzing your document... ✨</p>
+    <!-- Header Section -->
+    <div class="vault-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2><i class="fas fa-money-check me-2"></i>Document Vault</h2>
+                    <p class="mb-0">Securely store and verify your documents with AI</p>
+                </div>
+                <div>
+                    <button id="syncBtn" class="btn btn-success rounded px-4 py-2 fw-bold shadow-sm me-2"
+                        style="font-size:0.9rem;" onclick="syncProfile()">
+                        <i class="fas fa-sync-alt me-1"></i> Sync to Profile
+                    </button>
+                    <button class="btn btn-light rounded px-4 py-2 fw-bold shadow-sm text-dark"
+                        style="font-size:0.9rem;" onclick="checkMismatches()">
+                        Audit Documents
+                    </button>
                 </div>
             </div>
-            <i class="fas fa-cloud-upload-alt"></i>
-            <h2>Drag & Drop Documents</h2>
-            <p>Supported: Aadhaar, Ration Card, Income, Caste, Marks Card (JPG, PNG, PDF)</p>
-            <input type="file" id="fileInput" hidden multiple accept="image/*,.pdf">
-        </div>
-
-        <div class="doc-grid" id="docGrid">
-            <!-- Documents will be loaded here -->
         </div>
     </div>
 
+    <div class="container position-relative" style="z-index: 10;">
+        <!-- Audit Panel -->
+        <div id="auditResults" class="mb-4" style="display:none;">
+            <div class="card border-0 shadow-sm bg-danger bg-opacity-10" style="border-radius: 12px;">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold text-danger mb-3 d-flex align-items-center">
+                        <i class="fas fa-triangle-exclamation me-2"></i> Document Mismatches Found
+                    </h5>
+                    <div id="issuesList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Zone -->
+        <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+            <div id="uploadLoader"
+                style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index:10; flex-direction:column; justify-content:center; align-items:center; border-radius:12px;">
+                <div class="spinner-border text-primary mb-3"></div>
+                <p class="fw-medium text-primary m-0">AI is analyzing your document...</p>
+            </div>
+
+            <div class="upload-icon-wrapper">
+                <i class="fas fa-cloud-upload-alt m-0"></i>
+            </div>
+            <h5 class="fw-bold text-dark mb-1">Drag & Drop Documents</h5>
+            <p class="text-secondary small mb-0">Supported: Aadhaar, Ration Card, Income, Caste, Marks Card (JPG, PNG,
+                PDF)</p>
+            <input type="file" id="fileInput" hidden multiple accept="image/*,.pdf">
+        </div>
+
+        <!-- Doc Grid -->
+        <div class="row g-4 pb-5" id="docGrid">
+            <!-- Documents will load here -->
+        </div>
+    </div>
+
+    <!-- Details Modal -->
+    <div class="modal fade" id="docDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                <div class="modal-header border-0 p-4">
+                    <h5 class="modal-title fw-bold" id="modalDocTitle">Document Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                        onclick="closeModal()"></button>
+                </div>
+                <div class="modal-body p-4 pt-0">
+                    <div id="modalDataArea"></div>
+                </div>
+                <div class="modal-footer border-0 p-4 pt-0">
+                    <button type="button" class="btn btn-light w-100 fw-medium" data-bs-dismiss="modal"
+                        onclick="closeModal()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', loadDocuments);
 
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
 
-        // Handle File Selection
         fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
-
-        // Drag & Drop
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.classList.remove('dragover');
@@ -222,23 +286,15 @@
         async function handleFiles(files) {
             const loader = document.getElementById('uploadLoader');
             loader.style.display = 'flex';
-
             for (let file of files) {
                 const formData = new FormData();
                 formData.append('file', file);
-
                 try {
-                    const response = await fetch('/api/documents/upload', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const data = await response.json();
+                    const res = await fetch('/api/documents/upload', { method: 'POST', body: formData });
+                    const data = await res.json();
                     if (data.error) alert(data.error);
-                } catch (err) {
-                    console.error('Upload failed', err);
-                }
+                } catch (err) { console.error('Upload failed', err); }
             }
-
             loader.style.display = 'none';
             loadDocuments();
             checkMismatches();
@@ -247,55 +303,145 @@
         async function loadDocuments() {
             const grid = document.getElementById('docGrid');
             try {
-                const response = await fetch('/api/documents');
-                const data = await response.json();
+                const res = await fetch('/api/documents');
+                const data = await res.json();
+                window.allDocs = data.documents;
+                grid.innerHTML = data.documents.length ? '' : '<div class="col-12 text-center text-muted py-5"><i class="fas fa-folder-open mb-3 fa-3x d-block opacity-25"></i>No documents found</div>';
 
-                grid.innerHTML = data.documents.length ? '' : '<p style="text-align:center; grid-column: 1/-1;">No documents uploaded yet.</p>';
+                data.documents.forEach((doc, index) => {
+                    const extracted = doc.extractedData || {};
+                    let tableRows = '';
 
-                data.documents.forEach(doc => {
-                    const extracted = doc.extractedData;
-                    const card = document.createElement('div');
-                    card.className = 'doc-card';
-                    card.innerHTML = `
-                        <span class="doc-type">${doc.docType} <span class="confidence-tag">${Math.round(doc.confidenceScore * 100)}% Match</span></span>
-                        <div class="doc-meta">Uploaded: ${new Date(doc.uploadDate).toLocaleDateString()}</div>
-                        <div style="font-size:0.85em; background: #f8f9fa; padding: 10px; border-radius: 8px;">
-                            ${Object.entries(extracted).slice(0, 3).map(([k, v]) => `<div><strong>${k}:</strong> ${v}</div>`).join('')}
-                        </div>
-                        <a href="${doc.url}" target="_blank" style="display:block; margin-top:10px; font-size:0.9em; color:var(--accent)">View Full Document</a>
-                    `;
-                    grid.appendChild(card);
+                    // Display up to 3 key-value pairs from extracted data to match screenshot
+                    const keys = Object.keys(extracted).slice(0, 3);
+                    keys.forEach(k => {
+                        let val = extracted[k];
+                        if (typeof val === 'object') val = JSON.stringify(val);
+                        tableRows += `<tr><th>${k}</th><td>${val}</td></tr>`;
+                    });
+
+                    const col = document.createElement('div');
+                    col.className = 'col-md-6 col-lg-4';
+                    col.innerHTML = `
+                        <div class="card h-100 border-0 bg-white doc-card-hover p-2">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h6 class="fw-bold text-dark m-0 d-flex align-items-center">
+                                        <i class="fas fa-id-card text-primary me-2 shadow-sm rounded p-1" style="background:#eff6ff;"></i>
+                                        ${doc.docType}
+                                    </h6>
+                                    <span class="match-badge">${Math.round(doc.confidenceScore * 100)}% Match</span>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="small text-secondary mb-1"><i class="far fa-calendar-alt me-1"></i> Uploaded: ${new Date(doc.uploadDate).toLocaleDateString()}</div>
+                                    <div class="small text-secondary text-truncate"><i class="far fa-file-image me-1"></i> ${doc.url.split('/').pop()}</div>
+                                </div>
+
+                                ${tableRows ? `<table class="data-table"><tbody>${tableRows}</tbody></table>` : '<div class="flex-grow-1"></div>'}
+                                
+                                <div class="mt-auto action-btns">
+                                    <button onclick='showDocDetails(${index})' class="btn btn-outline-primary btn-sm flex-grow-1 fw-bold rounded">
+                                        <i class="fas fa-list me-1"></i> View Details
+                                    </button>
+                                    <a href="${doc.url}" target="_blank" class="btn btn-primary btn-sm flex-grow-1 fw-bold rounded">
+                                        <i class="fas fa-external-link-alt me-1"></i> View Original
+                                    </a>
+                                    <button class="delete-btn flex-shrink-0" onclick="deleteDocument(${doc.id})">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>`;
+                    grid.appendChild(col);
                 });
-            } catch (err) {
-                console.error('Failed to load documents', err);
+            } catch (err) { console.error('Load failed', err); }
+        }
+
+        async function deleteDocument(docId) {
+            if (!confirm('Are you sure you want to delete this document?')) return;
+            try {
+                const res = await fetch(`/api/documents/${docId}`, { method: 'POST' });
+                if (res.ok) { loadDocuments(); checkMismatches(); }
+                else { alert('Failed to delete'); }
+            } catch (err) { alert('Connection error'); }
+        }
+
+        function showDocDetails(index) {
+            const doc = window.allDocs[index];
+            const modal = new bootstrap.Modal(document.getElementById('docDetailsModal'));
+            document.getElementById('modalDocTitle').textContent = `${doc.docType} Details`;
+            const extracted = doc.extractedData || {};
+            let html = '<table class="data-table"><tbody>';
+            for (const [k, v] of Object.entries(extracted)) {
+                html += `<tr><th>${k}</th><td class="text-start">${typeof v === 'object' ? JSON.stringify(v) : v}</td></tr>`;
             }
+            html += '</tbody></table>';
+            document.getElementById('modalDataArea').innerHTML = html;
+            modal.show();
+        }
+
+        function closeModal() {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('docDetailsModal'));
+            if (modal) modal.hide();
         }
 
         async function checkMismatches() {
             const panel = document.getElementById('auditResults');
             const list = document.getElementById('issuesList');
+            const btn = event ? event.target : null;
+            if (btn && btn.tagName === 'BUTTON') {
+                const orig = btn.innerHTML;
+                btn.innerHTML = 'Auditing...';
+                btn.disabled = true;
+                setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 1000);
+            }
 
             try {
-                const response = await fetch('/api/documents/cross-validate');
-                const data = await response.json();
-
+                const res = await fetch('/api/documents/cross-validate');
+                const data = await res.json();
                 if (data.issues && data.issues.length > 0) {
                     panel.style.display = 'block';
                     list.innerHTML = data.issues.map(issue => `
-                        <div class="issue-item">
-                            <i class="fas fa-exclamation-circle"></i>
-                            <div>
-                                <strong>${issue.type}</strong>
-                                <p style="margin: 5px 0;">${issue.message}</p>
-                                <small style="color: #4a5568">💡 ${issue.suggestion}</small>
-                            </div>
-                        </div>
-                    `).join('');
+                        <div class="p-3 mb-2 bg-white rounded-3 shadow-sm border-start border-danger border-4">
+                            <h6 class="fw-bold text-dark m-0">${issue.type}</h6>
+                            <p class="small text-muted m-1">${issue.message}</p>
+                            <div class="small text-success mt-1">💡 Suggestion: ${issue.suggestion}</div>
+                        </div>`).join('');
                 } else {
                     panel.style.display = 'none';
+                    if (btn && btn.tagName === 'BUTTON') alert("No mismatches found!");
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function syncProfile() {
+            if (!confirm("This will scan your uploaded documents and automatically update your profile details on the dashboard. Continue?")) return;
+
+            const btn = document.getElementById('syncBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Syncing...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/documents/sync-profile', { method: 'POST' });
+                const data = await res.json();
+
+                if (res.ok) {
+                    if (data.fields && data.fields.length > 0) {
+                        alert(`✅ Success! Updated: ${data.fields.join(", ")}`);
+                    } else {
+                        alert("ℹ️ Profile is already up to date. No new data found in documents.");
+                    }
+                } else {
+                    alert("❌ Error: " + data.error);
                 }
             } catch (err) {
-                console.error('Mismatch check failed', err);
+                console.error(err);
+                alert("❌ Connection failed.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             }
         }
     </script>

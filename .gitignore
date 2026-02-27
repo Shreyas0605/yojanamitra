@@ -8,3 +8,7 @@ instance/
 node_modules/
 dist/
 build/
+.venv/
+static/uploads/
+static_backup_current/
+test_ai.py

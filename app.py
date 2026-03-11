@@ -44,11 +44,18 @@ logger = logging.getLogger(__name__)
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(line_buffering=True, encoding='utf-8', errors='replace')
     sys.stderr.reconfigure(line_buffering=True, encoding='utf-8', errors='replace')
-
+    
 # Initialize Flask app
 app = Flask(__name__, static_folder='static')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///yojanamitra.db')
+
+db_url = os.getenv('DATABASE_URL', 'sqlite:///yojanamitra.db')
+
+# Fix for Supabase / SQLAlchemy
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)

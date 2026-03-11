@@ -25,21 +25,26 @@ import logging
 import traceback
 import sys
 
-# Configure logging to ensure terminal output is visible and unbuffered
-log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Configure logging (Vercel-safe: stdout only)
+log_formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
 terminal_handler = logging.StreamHandler(sys.stdout)
 terminal_handler.setFormatter(log_formatter)
 
-file_handler = logging.FileHandler('yojanamitra_backend.log', encoding='utf-8')
-file_handler.setFormatter(log_formatter)
-
 logging.basicConfig(
     level=logging.INFO,
-    handlers=[terminal_handler, file_handler],
+    handlers=[terminal_handler],
     force=True
 )
+
 logger = logging.getLogger(__name__)
 
+# Ensure stdout is UTF-8 and unbuffered
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(line_buffering=True, encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(line_buffering=True, encoding='utf-8', errors='replace')
 # Also ensure stdout is unbuffered and uses UTF-8 to handle unicode characters in terminal
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(line_buffering=True, encoding='utf-8', errors='replace')

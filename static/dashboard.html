@@ -2280,9 +2280,9 @@
                                     </span>
                                 </div>
                                 ${scheme.matchPercentage < 100 && scheme.missingDocs && scheme.missingDocs.length > 0 ? `<div class="mb-2"><span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25" style="font-size: 0.75rem;"><i class="fas fa-exclamation-triangle me-1"></i>Missing: ${scheme.missingDocs.join(', ')}</span></div>` : ''}
-                                <h5 class="fw-bold mb-2 text-dark" style="font-size: 1.1rem; line-height: 1.4;">${scheme.name}</h5>
+                                <h5 class="fw-bold mb-2 text-dark" style="font-size: 1.1rem; line-height: 1.4;">${decodeHTMLEntities(scheme.name)}</h5>
                                 <p class="text-muted small mb-3 flex-grow-1" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                                    ${scheme.description || 'No description available for this scheme.'}
+                                    ${decodeHTMLEntities(scheme.description) || 'No description available for this scheme.'}
                                 </p>
                                 ${actionButtons}
                             </div>
@@ -2604,6 +2604,20 @@
             }
         }
 
+        // Helper to decode HTML entities (e.g., &amp;quot; -> ")
+        function decodeHTMLEntities(text) {
+            if (!text) return text;
+            const textarea = document.createElement('textarea');
+            textarea.innerHTML = text;
+            let decoded = textarea.value;
+            // Handle double-encoding
+            if (decoded.includes('&')) {
+                textarea.innerHTML = decoded;
+                decoded = textarea.value;
+            }
+            return decoded;
+        }
+
         // Helper to format text as list items - Smarter Context-Aware Parser
         function formatDetailList(text, targetId, isOrdered = false) {
             const container = document.getElementById(targetId);
@@ -2612,8 +2626,8 @@
                 return false;
             }
 
-            // Clean text: Trim leading/trailing whitespace
-            let cleaned = text.trim();
+            // Clean text: Trim leading/trailing whitespace and decode entities
+            let cleaned = decodeHTMLEntities(text.trim());
 
             // Regex to split only when a line starts with a bullet marker or number
             const lines = [];
@@ -2669,9 +2683,9 @@
                 const criteria = scheme.criteria || {};
 
                 // Basic Info
-                document.getElementById('modal-category').textContent = scheme.category || 'General';
-                document.getElementById('modal-name').textContent = scheme.name;
-                document.getElementById('modal-description').textContent = scheme.description;
+                document.getElementById('modal-category').textContent = decodeHTMLEntities(scheme.category || 'General');
+                document.getElementById('modal-name').textContent = decodeHTMLEntities(scheme.name);
+                document.getElementById('modal-description').textContent = decodeHTMLEntities(scheme.description);
                 document.querySelector('#modal-match span').textContent = (scheme.matchPercentage || 100) + '% Match';
 
                 // Rich Data Rendering

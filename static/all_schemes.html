@@ -149,8 +149,10 @@
                 }
 
                 data.schemes.forEach(scheme => {
-                    // Truncate description
-                    const desc = scheme.description.length > 100 ? scheme.description.substring(0, 100) + '...' : scheme.description;
+                    // Decode name and description for clean display
+                    const cleanName = decodeHTMLEntities(scheme.name);
+                    const cleanDesc = decodeHTMLEntities(scheme.description);
+                    const truncatedDesc = cleanDesc.length > 100 ? cleanDesc.substring(0, 100) + '...' : cleanDesc;
 
                     const card = `
                     <div class="col-md-6 col-lg-4">
@@ -158,16 +160,16 @@
                             <div class="card-body d-flex flex-column p-4">
                                 <div class="d-flex justify-content-between align-items-start mb-3">
                                     <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-10 rounded-pill px-3 py-2">
-                                        ${scheme.category || 'General'}
+                                        ${decodeHTMLEntities(scheme.category || 'General')}
                                     </span>
                                 </div>
-                                <h5 class="card-title fw-bold mb-3" style="color: #1e293b; min-height: 48px;">${scheme.name}</h5>
-                                <p class="card-text text-muted small mb-4 flex-grow-1" style="line-height: 1.6;">${desc}</p>
+                                <h5 class="card-title fw-bold mb-3" style="color: #1e293b; min-height: 48px;">${cleanName}</h5>
+                                <p class="card-text text-muted small mb-4 flex-grow-1" style="line-height: 1.6;">${truncatedDesc}</p>
                                 
                                 <div class="mt-auto pt-3 border-top border-light">
                                     <p class="small text-secondary mb-3">
                                         <i class="fas fa-gift me-2 text-warning"></i> 
-                                        <strong>Benefits:</strong> ${scheme.benefits ? scheme.benefits.substring(0, 50) + (scheme.benefits.length > 50 ? '...' : '') : 'N/A'}
+                                        <strong>Benefits:</strong> ${scheme.benefits ? decodeHTMLEntities(scheme.benefits).substring(0, 50) + (scheme.benefits.length > 50 ? '...' : '') : 'N/A'}
                                     </p>
                                     <button onclick="showSchemeDetails(${scheme.id})" class="btn btn-outline-primary w-100 rounded-pill fw-medium">
                                         View Details <i class="fas fa-info-circle ms-2 small"></i>
@@ -190,6 +192,20 @@
             }
         }
 
+        // Helper to decode HTML entities (e.g., &amp;quot; -> ")
+        function decodeHTMLEntities(text) {
+            if (!text) return text;
+            const textarea = document.createElement('textarea');
+            textarea.innerHTML = text;
+            let decoded = textarea.value;
+            // Handle double-encoding
+            if (decoded.includes('&')) {
+                textarea.innerHTML = decoded;
+                decoded = textarea.value;
+            }
+            return decoded;
+        }
+
         // Helper to format text as list items
         function formatDetailList(text, targetId) {
             const container = document.getElementById(targetId);
@@ -198,7 +214,7 @@
                 return false;
             }
 
-            let cleaned = String(text).trim();
+            let cleaned = decodeHTMLEntities(String(text).trim());
             const lines = [];
             const rawLines = cleaned.split(/\n/);
             let currentLine = "";
@@ -280,9 +296,9 @@
                 }
 
                 // Basic Info
-                document.getElementById('modal-category').textContent = scheme.category || 'General';
-                document.getElementById('modal-name').textContent = scheme.name;
-                document.getElementById('modal-description').textContent = scheme.description;
+                document.getElementById('modal-category').textContent = decodeHTMLEntities(scheme.category || 'General');
+                document.getElementById('modal-name').textContent = decodeHTMLEntities(scheme.name);
+                document.getElementById('modal-description').textContent = decodeHTMLEntities(scheme.description);
 
                 // Rich Data Rendering
                 formatDetailList(scheme.benefits, 'modal-benefits');

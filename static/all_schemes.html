@@ -203,7 +203,12 @@
                 textarea.innerHTML = decoded;
                 decoded = textarea.value;
             }
-            return decoded;
+            // Remove markdown artifacts like **, *, __, _, #, ~, ` often added by AI
+            let cleanedText = decoded.replace(/[\*\_#~`>]+/g, '');
+            // Some extra spaces might occur after characters are removed
+            cleanedText = cleanedText.replace(/\s{2,}/g, ' ');
+
+            return cleanedText.trim();
         }
 
         // Helper to format text as list items
